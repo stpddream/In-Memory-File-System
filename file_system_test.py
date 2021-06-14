@@ -1,10 +1,8 @@
 import unittest
 
-
 from file_system.file_system import FileSystem
 from file_system.file import Directory
 from file_system.utils import parse_path, is_directory, is_file
-
 import file_system.error as error
 
 class FileSystemTest(unittest.TestCase):
@@ -76,7 +74,6 @@ class FileSystemTest(unittest.TestCase):
         fs.change_dir('/')
         fs.remove('1')
         self.assertEqual(len(fs._current_dir.get_all_children()), 4)
-
     
     def test_write_file(self) -> None:
         fs = self._create_test_data()
@@ -225,8 +222,6 @@ class FileSystemTest(unittest.TestCase):
         fs.make_new_dir('1/1.1/1.1.1')
         fs.make_new_file('1/1.1/1.1.1/file3')
         return fs
-        
-    
         
 
 if __name__ == '__main__':

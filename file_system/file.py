@@ -15,6 +15,8 @@ class AbstractFile:
     def get_parent(self) -> 'AbstractFile':
         return self._parent
     
+    # note that this is not equivalent to renaming a file
+    # to rename a file, the node in parent children tree also needs to be renamed
     def set_name_in_file_metadata_only(self, name: str) -> None:
         self._name = name
 

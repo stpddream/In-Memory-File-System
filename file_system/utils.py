@@ -14,8 +14,6 @@ def join_path(path1: str, path2: str) -> str:
     return path1 + '/' + path2
     
 
-RESERVED_FILE_NAMES = ['.', '..']
-
 """
   parse a complete path into /path/to/file/ and file_name
   (path, None) will be returned if path leads to a directory
@@ -31,7 +29,7 @@ def parse_path(path: str) -> Tuple[str, str]:
 
     path_components = path.split('/')
     
-    if path_components[-1] == '' or path_components[-1] in RESERVED_FILE_NAMES:
+    if path_components[-1] == '' or path_components[-1] in constant.RESERVED_FILE_NAMES:
         # treated as part of the pure path
         file_name = None
     else: 

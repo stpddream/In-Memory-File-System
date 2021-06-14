@@ -11,9 +11,6 @@ class FileSystem:
         self._current_dir: Directory = self._root
     
     def change_dir(self, path: str) -> None:
-        if not path:
-            return
-
         maybe_dir = self._get_file_object_from_path(path)
         
         if not is_directory(maybe_dir):
@@ -29,12 +26,10 @@ class FileSystem:
         from_file = self._get_file_object_from_path(from_path)
         to_pure_path, to_file_name = self._get_target_path_and_file_name_for_move(from_file, to_path)
         
-        to_parent_dir = self._get_dir_object_from_path_and_auto_create_dir(to_pure_path)
+        to_parent_dir = self._get_file_object_from_path_and_auto_create_dir(to_pure_path)
         
         if not is_directory(to_parent_dir):
             raise InvalidPathComponentException('Move target is not directory')
-        
-        assert isinstance(to_parent_dir, Directory), 'for typing'
         
         self.remove(from_path)
         from_file.set_name_in_file_metadata_only(to_file_name)
@@ -48,9 +43,9 @@ class FileSystem:
         source_file = self._get_file_object_from_path(from_path)
         to_pure_path, to_file_name = self._get_target_path_and_file_name_for_move(source_file, to_path)
            
-        target_dir = self._get_dir_object_from_path_and_auto_create_dir(to_pure_path)
+        to_parent_dir = self._get_file_object_from_path_and_auto_create_dir(to_pure_path)
         
-        queue = [(source_file, target_dir)]
+        queue = [(source_file, to_parent_dir)]
         is_top_level = True
         while queue:
             to_be_copied, target_parent_dir = queue.pop(0)
@@ -58,6 +53,8 @@ class FileSystem:
             file_copy = self._copy_single_file(
                 to_be_copied, 
                 target_parent_dir, 
+                
+                # always use the source_file name unless this is the root file of the copy
                 to_file_name if is_top_level else to_be_copied.get_name(),
             )
             is_top_level = False
@@ -68,12 +65,12 @@ class FileSystem:
                     queue.append((child, file_copy))
        
     def make_new_dir(self, path: str) -> None:
-        self._get_dir_object_from_path_and_auto_create_dir(path)
+        self._get_file_object_from_path_and_auto_create_dir(path)
     
     def make_new_file(self, path: str) -> None:
         pure_path, file_name = parse_path(path)
         
-        parent_dir = self._get_dir_object_from_path_and_auto_create_dir(
+        parent_dir = self._get_file_object_from_path_and_auto_create_dir(
             pure_path,
         )
 
@@ -93,7 +90,6 @@ class FileSystem:
         path_list.reverse()
         
         return '/' + '/'.join(path_list)
-
 
     def find(self, name: str) -> List[str]:
         stack = [(None, self._current_dir)]
@@ -120,8 +116,6 @@ class FileSystem:
         if not is_file(file):
             raise InvalidPathComponentException('Invalid File')
         
-        assert isinstance(file, File), 'for typing'
-        
         file.write(content, append)
 
 
@@ -131,24 +125,25 @@ class FileSystem:
         if not is_file(file):
             raise InvalidPathComponentException('Invalid File')
         
-        assert isinstance(file, File), 'for typing'
-        
         return file.read()
  
-    def _get_dir_object_from_path_and_auto_create_dir(self, path: str) -> AbstractFile:
+    def _get_file_object_from_path_and_auto_create_dir(self, path: str) -> AbstractFile:
         return self._get_file_object_from_path(
             path, 
-            True # automatically create directory is not exist
+            True, # automatically create directory is not exist
         )
 
     """
-        Given a path, returns the file that path represents
+        Given a path, returns the file that path represents. Works for both directories and actual files
         auto_create_dir: automatically create directories if not exist
     """
     def _get_file_object_from_path(self, path: str, auto_create_dir=False) -> AbstractFile:
-        path_components = path.split('/')
+        if not path:
+            raise InvalidPathComponentException('Invalid path')
 
+        path_components = path.split('/')
         current_dir = self._current_dir
+
         # absolute path
         if path[0] == '/':
             current_dir = self._root
@@ -167,8 +162,7 @@ class FileSystem:
             elif comp == '..':
                 current_dir = current_dir.get_parent()
                 continue
-            # skip empty entries. we allow /a////b/
-            elif not comp:
+            elif not comp: # skip empty entries. we allow /a////b/
                 continue
             
             if not current_dir.has_child(comp):
@@ -181,7 +175,6 @@ class FileSystem:
 
             # only last component in the chain is allowed to be a file
             if idx != len(path_components) - 1 and is_file(child):
-                # TODO: implement error handling system
                 raise InvalidPathComponentException(comp, 'is not a directory')
             
             current_dir = child
